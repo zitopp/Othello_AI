@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Othello - Modern Edition</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+</head>
+<body>
+    <!-- Menu Screen -->
+    <div id="menu-screen" class="screen active">
+        <div class="menu-container">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Othello Logo" class="logo">
+            <div class="menu-buttons">
+                <button class="btn btn-primary" onclick="showAISetup()">
+                    <span>Human vs AI</span>
+                </button>
+                <button class="btn btn-secondary" onclick="startGame('pvp')">
+                    <span>Human vs Human</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Setup Screen -->
+    <div id="ai-setup-screen" class="screen">
+        <div class="setup-container">
+            <h2 class="screen-title">AI Setup</h2>
+            
+            <div class="setup-section">
+                <h3>Choose Difficulty</h3>
+                <div class="slider-container">
+                    <div class="difficulty-labels">
+                        <span class="diff-label">Easy</span>
+                        <span class="diff-label">Medium</span>
+                        <span class="diff-label">Hard</span>
+                    </div>
+                    <input type="range" id="difficulty-slider" class="difficulty-slider" min="1" max="3" value="1" step="1">
+                    <div id="difficulty-display" class="difficulty-display">Easy</div>
+                </div>
+            </div>
+
+            <div class="setup-section">
+                <h3>Choose Your Color</h3>
+                <div class="color-selection">
+                    <div class="color-circle black-circle active" data-color="1" onclick="selectColor(1)">
+                        <div class="color-label">Black</div>
+                        <div class="color-sublabel">You go first</div>
+                    </div>
+                    <div class="color-circle white-circle" data-color="2" onclick="selectColor(2)">
+                        <div class="color-label">White</div>
+                        <div class="color-sublabel">AI goes first</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setup-buttons">
+                <button class="btn btn-primary" onclick="startAIGame()">Start Game</button>
+                <button class="btn btn-secondary" onclick="showMenu()">Back</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+        <div class="game-container">
+            <div class="board-section">
+                <div id="board" class="board"></div>
+            </div>
+
+            <div class="info-panel">
+                <div class="panel-content">
+                    <div class="game-title-logo">
+                        <img src="{{ url_for('static', filename='logo.png') }}" alt="Othello" class="panel-logo">
+                    </div>
+                    
+                    <div class="turn-indicator">
+                        <div id="turn-text" class="turn-text">Black's Turn</div>
+                    </div>
+
+                    <div class="score-display">
+                        <div class="score-item">
+                            <div class="score-label">Black</div>
+                            <div id="black-score" class="score-value">2</div>
+                        </div>
+                        <div class="score-divider"></div>
+                        <div class="score-item">
+                            <div class="score-label">White</div>
+                            <div id="white-score" class="score-value">2</div>
+                        </div>
+                    </div>
+
+                    <div class="panel-buttons">
+                        <button class="btn btn-hint" onclick="getHint()">
+                            <span>💡 Hint</span>
+                        </button>
+                        <button class="btn btn-secondary" onclick="newGame()">
+                            <span>🔄 New Game</span>
+                        </button>
+                        <button class="btn btn-secondary" onclick="showMenu()">
+                            <span>🏠 Menu</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="game-over-modal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-title">GAME OVER</h2>
+            <div id="winner-text" class="winner-text"></div>
+            <div id="final-score" class="final-score"></div>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" onclick="newGame()">New Game</button>
+                <button class="btn btn-secondary" onclick="closeModal()">Main Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='game.js') }}"></script>
+</body>
+</html>

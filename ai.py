@@ -11,6 +11,9 @@ class OthelloAI:
         """
         self.game = game
         self.depth = difficulty
+        # Lightweight transposition table to cache evaluated positions
+        self.tt = {}
+        self.max_tt_size = 200000
         
         # Position weight matrix (scientifically derived values)
         self.weight_matrix = [
@@ -25,26 +28,33 @@ class OthelloAI:
         ]
     
     def get_best_move(self, player):
-        """Get the best move for the given player using minimax"""
-        _, best_move = self.minimax(self.game.board, self.depth, player, -math.inf, math.inf, True)
+
+        score, best_move = self.minimax(self.game.board, self.depth, player, -math.inf, math.inf, True)
         return best_move
     
     def minimax(self, board, depth, player, alpha, beta, is_maximizing):
-        """
-        Minimax with alpha-beta pruning
         
-        board: current board state
-        depth: remaining search depth
-        player: current player (1 or 2)
-        alpha: best value for maximizer
-        beta: best value for minimizer
-        is_maximizing: True if maximizing player
-        """
-        # Base case: depth 0 or game over
+        tt_key = (self._board_key(board), player, depth, is_maximizing)
+        if tt_key in self.tt:
+            return self.tt[tt_key]
+
         if depth == 0 or self.is_terminal(board):
-            return self.evaluate(board, player), None
+            val = self.evaluate(board, player)
+            res = (val, None)
+            if len(self.tt) > self.max_tt_size:
+                self.tt.clear()
+            self.tt[tt_key] = res
+            return res
         
         valid_moves = self.get_valid_moves_from_board(board, player)
+
+
+        if valid_moves:
+            wm = self.weight_matrix
+            if is_maximizing:
+                valid_moves.sort(key=lambda mv: wm[mv[0]][mv[1]], reverse=True)
+            else:
+                valid_moves.sort(key=lambda mv: wm[mv[0]][mv[1]])
         
         # No valid moves - pass turn to opponent
         if not valid_moves:
@@ -53,38 +63,71 @@ class OthelloAI:
             return score, None
         
         best_move = None
+        is_root = (depth == self.depth)
         
         if is_maximizing:
             max_eval = -math.inf
+            if is_root:
+                print(f"\nevaluating {len(valid_moves)} possible moves:")
+                print(f"{'move':<15} {'score':<10} {'status'}")
+                print("-" * 40)
+            
             for move in valid_moves:
                 new_board = self.simulate_move(board, move, player)
                 eval, _ = self.minimax(new_board, depth - 1, 3 - player, alpha, beta, False)
                 
+                status = ""
                 if eval > max_eval:
                     max_eval = eval
                     best_move = move
+                    status = "<- best"
+                
+                if is_root:
+                    print(f"{str(move):<15} {eval:>8.2f}  {status}")
                 
                 alpha = max(alpha, eval)
                 if beta <= alpha:
+                    if is_root:
+                        print(f"{'(pruned)':<15} {'---':<10} (alpha-beta cutoff)")
                     break  # Beta cutoff
             
-            return max_eval, best_move
+            res = (max_eval, best_move)
+            if len(self.tt) > self.max_tt_size:
+                self.tt.clear()
+            self.tt[tt_key] = res
+            return res
         
         else:
             min_eval = math.inf
+            if is_root:
+                print(f"\nevaluating {len(valid_moves)} possible moves min:")
+                print(f"{'move':<15} {'score':<10} {'status'}")
+                print("-" * 40)
+            
             for move in valid_moves:
                 new_board = self.simulate_move(board, move, player)
                 eval, _ = self.minimax(new_board, depth - 1, 3 - player, alpha, beta, True)
                 
+                status = ""
                 if eval < min_eval:
                     min_eval = eval
                     best_move = move
+                    status = "<- best"
+                
+                if is_root:
+                    print(f"{str(move):<15} {eval:>8.2f}  {status}")
                 
                 beta = min(beta, eval)
                 if beta <= alpha:
+                    if is_root:
+                        print(f"{'(pruned)':<15} {'---':<10} (alpha-beta cutoff)")
                     break  # Alpha cutoff
             
-            return min_eval, best_move
+            res = (min_eval, best_move)
+            if len(self.tt) > self.max_tt_size:
+                self.tt.clear()
+            self.tt[tt_key] = res
+            return res
     
     def evaluate(self, board, player):
         """
@@ -92,22 +135,22 @@ class OthelloAI:
         The matrix already encodes all strategic knowledge (corners, edges, etc.)
         """
         opponent = 3 - player
-        score = 0
-        
+        score = 0.0
+        wm = self.weight_matrix
         for i in range(8):
+            br = board[i]
+            wmr = wm[i]
             for j in range(8):
-                if board[i][j] == player:
-                    score += self.weight_matrix[i][j]
-                elif board[i][j] == opponent:
-                    score -= self.weight_matrix[i][j]
-        
+                v = br[j]
+                if v == player:
+                    score += wmr[j]
+                elif v == opponent:
+                    score -= wmr[j]
         return score
     
     def is_terminal(self, board):
-        """Check if game is over - uses static game methods"""
-        player1_moves = OthelloGame.get_valid_moves_on_board(board, 1)
-        player2_moves = OthelloGame.get_valid_moves_on_board(board, 2)
-        return len(player1_moves) == 0 and len(player2_moves) == 0
+        """Check if game is over - uses fast adjacency scan"""
+        return not (OthelloGame.has_any_move_on_board(board, 1) or OthelloGame.has_any_move_on_board(board, 2))
     
     def get_valid_moves_from_board(self, board, player):
         """Get valid moves from a board state - uses static game method"""
@@ -117,3 +160,7 @@ class OthelloAI:
         """Simulate a move and return new board state - uses static game method"""
         row, col = move
         return OthelloGame.simulate_move_on_board(board, row, col, player)
+
+    def _board_key(self, board):
+        # Compact 64-byte key for the transposition table
+        return bytes(board[i][j] for i in range(8) for j in range(8))

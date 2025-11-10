@@ -1,7 +1,12 @@
 # Othello Game Logic
 # This file contains the core game mechanics
 
-import random
+# Shared directions constant to avoid repeated allocations
+DIRECTIONS = (
+    (-1, -1), (-1, 0), (-1, 1),
+    (0, -1),           (0, 1),
+    (1, -1),  (1, 0),  (1, 1)
+)
 
 class OthelloGame:
     def __init__(self):
@@ -37,9 +42,7 @@ class OthelloGame:
         opponent = 3 - player  # If player is 1, opponent is 2. If player is 2, opponent is 1.
         
         # Check all 8 directions (up, down, left, right, and 4 diagonals)
-        directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
-        
-        for dr, dc in directions:
+        for dr, dc in DIRECTIONS:
             r, c = row + dr, col + dc
             found_opponent = False
             
@@ -71,9 +74,7 @@ class OthelloGame:
         opponent = 3 - player
 
         # Check all 8 directions
-        directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
-
-        for dr, dc in directions:
+        for dr, dc in DIRECTIONS:
             r, c = row + dr, col + dc
             pieces_to_flip = []  # Store pieces we need to flip
 
@@ -138,9 +139,8 @@ class OthelloGame:
             return False
         
         opponent = 3 - player
-        directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
         
-        for dr, dc in directions:
+        for dr, dc in DIRECTIONS:
             r, c = row + dr, col + dc
             found_opponent = False
             
@@ -162,23 +162,52 @@ class OthelloGame:
     def get_valid_moves_on_board(board, player):
         """Get all valid moves for a player on any board state"""
         valid_moves = []
-        for row in range(8):
-            for col in range(8):
-                if OthelloGame.is_valid_move_on_board(board, row, col, player):
-                    valid_moves.append((row, col))
+        opponent = 3 - player
+        candidates = set()
+        # Build candidate empty cells adjacent to opponent pieces
+        for r in range(8):
+            br = board[r]
+            for c in range(8):
+                if br[c] == opponent:
+                    for dr, dc in DIRECTIONS:
+                        nr = r + dr
+                        nc = c + dc
+                        if 0 <= nr < 8 and 0 <= nc < 8 and board[nr][nc] == 0:
+                            candidates.add((nr, nc))
+        # Validate only candidates
+        for (row, col) in candidates:
+            if OthelloGame.is_valid_move_on_board(board, row, col, player):
+                valid_moves.append((row, col))
         return valid_moves
+
+    @staticmethod
+    def has_any_move_on_board(board, player):
+        opponent = 3 - player
+        candidates = set()
+        for r in range(8):
+            br = board[r]
+            for c in range(8):
+                if br[c] == opponent:
+                    for dr, dc in DIRECTIONS:
+                        nr = r + dr
+                        nc = c + dc
+                        if 0 <= nr < 8 and 0 <= nc < 8 and board[nr][nc] == 0:
+                            candidates.add((nr, nc))
+        for (row, col) in candidates:
+            if OthelloGame.is_valid_move_on_board(board, row, col, player):
+                return True
+        return False
     
     @staticmethod
     def simulate_move_on_board(board, row, col, player):
         """Simulate a move on a board copy and return new board"""
-        import copy
-        new_board = copy.deepcopy(board)
+        # Fast copy without deepcopy
+        new_board = [r[:] for r in board]
         
         new_board[row][col] = player
         opponent = 3 - player
-        directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
         
-        for dr, dc in directions:
+        for dr, dc in DIRECTIONS:
             r, c = row + dr, col + dc
             pieces_to_flip = []
             
